@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:mylockery/ui/home/home.dart';
+import 'package:mylockery/ui/page_controller.dart';
 
 class Authentication {
   static SnackBar customSnackBar({required String content}) {
@@ -26,7 +26,7 @@ class Authentication {
     if (user != null) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => Home(
+          builder: (context) => MyNavigationBar(
             user: user,
           ),
         ),

@@ -58,10 +58,10 @@ class _MyHomePageState extends State<LockerApp> {
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance.collection('locker_list').snapshots(),
                 builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                  if (!snapshot.hasData) return new Text('Loading...');
+                  if (!snapshot.hasData) return CircularProgressIndicator();
+                  print(snapshot);
                   return new ListView(
                     children: snapshot.data!.docs.map((DocumentSnapshot document) {
-                      print(snapshot.data);
                       // return new ListTile(
                       //   title: new Text(document['is_paid'].toString()),
                       //   subtitle: new Text(document['user_lockery_id']),
@@ -89,6 +89,7 @@ class _MyHomePageState extends State<LockerApp> {
                           bottom: size.height * .02,
                         ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             !document['is_available']
                                 ? Container(
@@ -107,6 +108,16 @@ class _MyHomePageState extends State<LockerApp> {
                             SizedBox(
                               height: size.height * .02,
                             ),
+                            Text(
+                              "Rack No" + document['rack_number'].toString(),
+                              style: TextStyle(
+                                fontSize: 20.0,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(
+                              height: size.height * .02,
+                            ),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -117,13 +128,13 @@ class _MyHomePageState extends State<LockerApp> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                // Text(
-                                //   document['fee'].toString(),
-                                //   style: TextStyle(
-                                //     fontSize: 20.0,
-                                //     fontWeight: FontWeight.bold,
-                                //   ),
-                                // ),
+                                Text(
+                                  "Rs " + document['charges'].toString() + " Per Min",
+                                  style: TextStyle(
+                                    fontSize: 20.0,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ),
                           ],

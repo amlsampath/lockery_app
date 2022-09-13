@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:mylockery/constants/color_constatant.dart';
-import 'package:mylockery/ui/reusable_widget/custom_button.dart';
+import 'package:mylockery/ui/reusable_widget/google_sign_in.dart';
 import 'package:mylockery/utility/authentication.dart';
 
 class SignInScreen extends StatefulWidget {

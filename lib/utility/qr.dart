@@ -2,7 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mylockery/locker_app/model/locker_model.dart';
+import 'package:mylockery/locker_app/model/user_model.dart';
+import 'package:mylockery/repository/repository.dart';
 import 'package:mylockery/ui/home/home.dart';
+import 'package:mylockery/utility/notification.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:uuid/uuid.dart';
 
@@ -38,104 +42,125 @@ class _QRState extends State<QR> {
                 child: MobileScanner(
                     allowDuplicates: false,
                     onDetect: (barcode, args) async {
-                      if (barcode.rawValue == null) {
-                        debugPrint('Failed to scan Barcode');
-                      } else {
-                        setState(() {
-                          _isLoading = true;
-                        });
-                        final String code = barcode.rawValue!;
+                      Future.delayed(const Duration(milliseconds: 4000), () {
+                        if (barcode.rawValue == null) {
+                          debugPrint('Failed to scan Barcode');
+                        } else {
+                          setState(() {
+                            _isLoading = true;
+                          });
+                          final String code = barcode.rawValue!;
 
-                        Alert(
-                          context: context,
-                          type: AlertType.warning,
-                          title: "Now you are going to lock this locker",
-                          desc: "After locking you cant unlock until you pay the minimum payment.",
-                          content: Column(
-                            children: [],
-                          ),
-                          buttons: [
-                            DialogButton(
-                              child: Text(
-                                "Lock",
-                                style: TextStyle(color: Colors.white, fontSize: 20),
-                              ),
-                              onPressed: () async {
-                                DateTime now = DateTime.now();
-                                String datetime = DateTime.now().toString();
-                                var firebaseUser = await FirebaseAuth.instance.currentUser;
-                                var uuid = Uuid();
-                                try {
-                                  await FirebaseFirestore.instance.collection('user_lockery').add({
-                                    'is_paid': false,
-                                    'locked_date': datetime.toString(),
-                                    'lockery_id': code,
-                                    'rack_number': 1.toString(),
-                                    'user_id': firebaseUser!.uid,
-                                    'user_lockery_id': uuid.v1(),
-                                  }).then((value) {
-                                    print('UI************');
-                                    print(value.id);
-                                  });
+                          Alert(
+                            context: context,
+                            type: AlertType.warning,
+                            title: "Now you are going to lock this locker",
+                            desc: "After locking you cant unlock until you pay the minimum payment.",
+                            content: Column(
+                              children: [],
+                            ),
+                            buttons: [
+                              DialogButton(
+                                child: Text(
+                                  "Lock",
+                                  style: TextStyle(color: Colors.white, fontSize: 20),
+                                ),
+                                onPressed: () async {
+                                  List<LockerModel> mylockerList = [];
+                                  List<UserModel> userDataList = [];
+                                  DateTime now = DateTime.now();
+                                  String datetime = DateTime.now().toString();
+                                  var firebaseUser = await FirebaseAuth.instance.currentUser;
+                                  var uuid = Uuid();
 
-                                  //  await FirebaseFirestore.instance.collection('user_lockery').doc().update());
                                   try {
-                                    final post = await FirebaseFirestore.instance
+                                    // Get Locker Details.
+
+                                    final lockerList = await FirebaseFirestore.instance
                                         .collection('locker_list')
                                         .where(
                                           'id',
                                           isEqualTo: code,
                                         )
-                                        .limit(1)
-                                        .get()
-                                        .then((
-                                      QuerySnapshot snapshot,
-                                    ) {
-                                      //Here we get the document reference and return to the post variable.
-                                      return snapshot.docs[0].reference;
+                                        .get();
+                                    lockerList.docs.forEach((element) {
+                                      mylockerList.add(LockerModel.fromJson(element.data()));
                                     });
 
-                                    var batch = FirebaseFirestore.instance.batch();
+                                    // Insert payment details.
+                                    await Repository.insert(values: {
+                                      'is_paid': false,
+                                      'locked_date': datetime.toString(),
+                                      'lockery_id': code,
+                                      'rack_number': mylockerList[0].rack_number,
+                                      'location': mylockerList[0].location,
+                                      'user_id': firebaseUser!.uid,
+                                      'fee': mylockerList[0].fees,
+                                      'is_locked': true,
+                                      'user_lockery_id': uuid.v1(),
+                                    }, table: 'user_lockery');
 
-                                    batch.update(post, {'is_available': false});
-                                    batch.commit();
+                                    // Update lockery list as not available
+                                    try {
+                                      // Update lockery list as not available.
+                                      await Repository.update(
+                                        conditionParameter: 'id',
+                                        values: {'is_available': false},
+                                        table: 'locker_list',
+                                        conditionValue: code,
+                                      );
+/* 
+                                    User? user = FirebaseAuth.instance.currentUser;
+                                    // Get User Details
+                                    final list = await FirebaseFirestore.instance
+                                        .collection('users')
+                                        .where(
+                                          'user_id',
+                                          isEqualTo: user!.uid,
+                                        )
+                                        .get();
+
+                                    list.docs.forEach((element) {
+                                      userDataList.add(UserModel.fromJson(element.data()));
+                                    }); */
+                                    } catch (e) {
+                                      print(e);
+                                    }
+                                    setState(() {
+                                      _isLoading = false;
+                                    });
+                                    await sendOnsignalNotification(title: 'Your Locker Booking Info', content: 'Locker Number ' + mylockerList[0].rack_number + "  " + "Locked Time " + datetime.toString());
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(
+                                        builder: (context) => Home(
+                                          user: firebaseUser,
+                                        ),
+                                      ),
+                                    );
                                   } catch (e) {
                                     print(e);
                                   }
+                                },
+                                width: 120,
+                              ),
+                              DialogButton(
+                                color: Colors.orange,
+                                child: Text(
+                                  "Close",
+                                  style: TextStyle(color: Colors.white, fontSize: 20),
+                                ),
+                                onPressed: () {
                                   setState(() {
                                     _isLoading = false;
                                   });
-
-                                  Navigator.of(context).pushReplacement(
-                                    MaterialPageRoute(
-                                      builder: (context) => Home(
-                                        user: firebaseUser,
-                                      ),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  print(e);
-                                }
-                              },
-                              width: 120,
-                            ),
-                            DialogButton(
-                              color: Colors.orange,
-                              child: Text(
-                                "Close",
-                                style: TextStyle(color: Colors.white, fontSize: 20),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isLoading = false;
-                                });
-                                Navigator.pop(context);
-                              },
-                              width: 120,
-                            )
-                          ],
-                        ).show();
-                      }
+                                  Navigator.pop(context);
+                                },
+                                width: 120,
+                              )
+                            ],
+                          ).show();
+                        }
+                      });
                     }),
               ),
             ),

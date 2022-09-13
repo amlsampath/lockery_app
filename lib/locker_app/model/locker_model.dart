@@ -4,12 +4,14 @@ class LockerModel {
   final String id;
   final String location;
   final String fees;
+  final String rack_number;
   final bool isAvailable;
 
   const LockerModel({
     required this.id,
     required this.location,
     required this.fees,
+    required this.rack_number,
     required this.isAvailable,
   });
 
@@ -18,6 +20,7 @@ class LockerModel {
       id: snap['id'],
       location: snap['location'],
       fees: snap['fee'],
+      rack_number: snap['rack_number'],
       isAvailable: snap['isAvailable'],
     );
   }
@@ -27,6 +30,7 @@ class LockerModel {
       id: json['id'] ?? "",
       location: json['location'] ?? "",
       fees: json['fee'] ?? "0.0",
+      rack_number: json['rack_number'],
       isAvailable: json['is_available'] ?? true,
     );
   }
